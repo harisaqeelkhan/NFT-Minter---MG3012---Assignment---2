@@ -3,7 +3,8 @@
 ## Assignment 2 Information
 - **Student Name:** Muhammad Haris Khan  
 - **Roll Number:** 23i-5558  
-- **Batch:** 23  
+- **Batch:** 23
+- **Section:** BFT-5B  
 - **Course Name:** Dr. Usama Arshad  
 - **Instructor:** MG3012 - Blockchain Technology for Business  
 
