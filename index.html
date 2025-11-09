@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NFT Minter by Haris Khan</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+</head>
+
+<body>
+  <!-- MAIN PAGE LAYOUT -->
+  <div class="left-column">
+    
+    <!-- 1️⃣ MAIN TITLE BOX -->
+    <div class="box title-box">
+      <h1>NFT Minter by Haris Khan</h1>
+      <p>Upload images, preview, and mint as NFTs on Sepolia.</p>
+    </div>
+
+    <!-- 2️⃣ CONNECT BUTTON BOX -->
+    <div class="box connect-box">
+      <button id="connectBtn">Connect MetaMask</button>
+      <span id="connectionStatus" class="status">Not connected</span>
+    </div>
+
+    <!-- 3️⃣ UPLOAD BOX -->
+    <div class="box upload-box">
+      <h2>Upload from gallery</h2>
+      <input type="file" id="fileInput" accept="image/*" multiple />
+      <p class="note">
+        Uploaded images appear below. Click <strong>Mint</strong> to send to the contract.
+      </p>
+    </div>
+
+    <!-- 4️⃣ UPLOADED GALLERY BOX -->
+    <div class="box gallery-box">
+      <h3>Uploaded – Gallery</h3>
+      <div id="uploadedGallery" class="gallery"></div>
+    </div>
+
+    <!-- 5️⃣ MINTED GALLERY BOX -->
+    <div class="box gallery-box">
+      <h3>Minted – Gallery</h3>
+      <div id="mintedGallery" class="gallery"></div>
+    </div>
+
+  </div>
+
+  <!-- 6️⃣ RIGHT SIDE RESPONSE BOX -->
+  <div class="response-box">
+    <h3>Response Box</h3>
+    <p>Things show up here when actions are performed.</p>
+    <div id="log" class="log"></div>
+  </div>
+
+  <!-- JS SCRIPT -->
+  <script>
+    /* =================== CONFIG =================== */
+    const CONTRACT_ADDRESS = "0xefE188AD3B9A6c92e0D355B9e3ba15dA23a260eB";
+    const CONTRACT_ABI = [
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Approval","type":"event"},
+      {"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"approve","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"string","name":"_tokenURI","type":"string"}],"name":"mint","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Transfer","type":"event"},
+      {"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"transferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"getApproved","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+    ];
+
+    let provider, signer, contract;
+    const connectBtn = document.getElementById('connectBtn');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const fileInput = document.getElementById('fileInput');
+    const uploadedGallery = document.getElementById('uploadedGallery');
+    const mintedGallery = document.getElementById('mintedGallery');
+    const logDiv = document.getElementById('log');
+
+    function log(msg) {
+      const p = document.createElement('p');
+      p.textContent = msg;
+      logDiv.prepend(p);
+    }
+
+    /* ---------------- MetaMask connect ---------------- */
+    async function connectMetaMask() {
+      if (!window.ethereum) {
+        connectionStatus.textContent = 'MetaMask not found';
+        alert('Please install MetaMask');
+        return;
+      }
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+        const addr = await signer.getAddress();
+        connectionStatus.textContent = 'Connected: ' + addr;
+        connectionStatus.classList.add('ok');
+        log('MetaMask connected: ' + addr);
+
+        const network = await provider.getNetwork();
+        log(`Network: ${network.name} (chainId ${network.chainId})`);
+
+        window.ethereum.on('accountsChanged', (accounts) => {
+          if (!accounts || accounts.length === 0) {
+            connectionStatus.textContent = 'Not connected';
+            connectionStatus.classList.remove('ok');
+            log('Account disconnected');
+          } else {
+            signer = provider.getSigner();
+            contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            connectionStatus.textContent = 'Connected: ' + accounts[0];
+            log('Account switched: ' + accounts[0]);
+          }
+        });
+
+        window.ethereum.on('chainChanged', () => {
+          log('Chain changed, reloading page...');
+          setTimeout(() => window.location.reload(), 500);
+        });
+
+      } catch (err) {
+        connectionStatus.textContent = 'Connection failed';
+        connectionStatus.classList.remove('ok');
+        log('Connection failed: ' + err.message);
+      }
+    }
+
+    connectBtn.addEventListener('click', connectMetaMask);
+
+    /* ---------------- File upload ---------------- */
+    fileInput.addEventListener('change', (ev) => {
+      const files = ev.target.files;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const dataUrl = e.target.result;
+          addToUploadedGallery(dataUrl);
+        };
+        reader.readAsDataURL(f);
+      }
+      fileInput.value = '';
+    });
+
+    function addToUploadedGallery(dataUrl) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.alt = 'uploaded image';
+      img.loading = 'lazy';
+      const mintBtn = document.createElement('button');
+      mintBtn.textContent = 'Mint';
+      mintBtn.onclick = () => mintImage(dataUrl, card);
+      card.appendChild(img);
+      card.appendChild(mintBtn);
+      uploadedGallery.prepend(card);
+    }
+
+    /* ---------------- Minting ---------------- */
+    async function mintImage(dataUrl, cardElement) {
+      if (!contract) {
+        alert('Connect MetaMask first');
+        return;
+      }
+      try {
+        log('Sending mint transaction...');
+        const tx = await contract.mint("https://via.placeholder.com/150");
+        log('Transaction sent: ' + tx.hash);
+        const receipt = await tx.wait();
+        log('Transaction confirmed in block ' + receipt.blockNumber);
+
+        let tokenId = null;
+        if (receipt && receipt.events) {
+          for (const ev of receipt.events) {
+            if (ev.event === 'Transfer' && ev.args) {
+              tokenId = ev.args[2].toString();
+              break;
+            }
+          }
+        }
+        if (!tokenId) {
+          const total = await contract.totalSupply();
+          tokenId = total.toString();
+          log('tokenId fallback from totalSupply: ' + tokenId);
+        }
+        moveToMinted(cardElement, tokenId);
+        log('Minted tokenId: ' + tokenId);
+      } catch (err) {
+        log('Mint failed: ' + err.message);
+        alert('Mint failed: ' + err.message);
+      }
+    }
+
+    function moveToMinted(cardElement, tokenId) {
+      const btn = cardElement.querySelector('button');
+      if (btn) btn.remove();
+      const badge = document.createElement('div');
+      badge.className = 'badge';
+      badge.textContent = tokenId ? ('#' + tokenId) : 'minted';
+      cardElement.appendChild(badge);
+      if (uploadedGallery.contains(cardElement)) uploadedGallery.removeChild(cardElement);
+      mintedGallery.prepend(cardElement);
+    }
+  </script>
+</body>
+</html>
