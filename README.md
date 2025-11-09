@@ -52,6 +52,6 @@ This project is built with **HTML, CSS, JavaScript, and Solidity** using the ERC
 
 1. **Clone the repository**
 ```bash
-git clone <repository-url>
+git clone <https://github.com/harisaqeelkhan/NFT-Minter---MG3012---Assignment---2>
 cd nft-minter-dapp
 
